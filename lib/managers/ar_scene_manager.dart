@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:ar_flutter_plugin/models/ar_anchor.dart';
+import 'package:ar_flutter_plugin/models/ar_camera_pose_info.dart';
 import 'package:ar_flutter_plugin/utils/json_converters.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:vector_math/vector_math_64.dart';
 import 'package:flutter/services.dart';
 
@@ -12,7 +15,12 @@ class ARSceneManager {
   /// The event channel used to receive camera pose [Matrix4] updates from the native
   /// platform.
   late EventChannel _cameraPoseChannel;
-  Stream<Matrix4>? _cameraPoseStream;
+
+  ARCameraPoseInfo? get currentPoseInfo => _currentPoseInfo;
+  ARCameraPoseInfo? _currentPoseInfo;
+  StreamController<ARCameraPoseInfo>? _poseInfoController;
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  StreamSubscription<Matrix4>? _nativePoseSubscription;
 
   /// Debugging status flag. If true, all platform calls are printed. Defaults to false.
   final bool debug;
@@ -51,41 +59,54 @@ class ARSceneManager {
   /// Dispose all [ARSceneManager] streams.
   /// You should call this before removing the AR view to prevent out of memory erros
   void dispose() async {
-    try {
-      _cameraPoseStream = null;
-      await _channel.invokeMethod<void>("dispose");
-    } catch (e) {
-      print(e);
-    }
+    stopCameraPoseStream();
   }
 
-  Stream<Matrix4> getCameraPoseStream() {
-    if (_cameraPoseStream != null) {
-      return _cameraPoseStream!;
-    }
-
+  Stream<ARCameraPoseInfo> startCameraPoseStream() {
     var originalStream = _cameraPoseChannel.receiveBroadcastStream();
 
     var cameraPoseStream = originalStream.asBroadcastStream(
       onCancel: (subscription) {
         subscription.cancel();
-        _cameraPoseStream = null;
       },
     );
 
-    _cameraPoseStream = cameraPoseStream
+    final poseStream = cameraPoseStream
         .map<Matrix4>((dynamic element) =>
             MatrixConverter().fromJson(element as List<dynamic>))
         .handleError(
       (error) {
-        _cameraPoseStream = null;
         if (error is PlatformException) {
           print('Error caught: ' + error.toString());
         }
         throw error;
       },
     );
-    return _cameraPoseStream!;
+    _nativePoseSubscription = poseStream.listen(_cameraPoseListener);
+    _compassSubscription = FlutterCompass.events?.listen(_compassEventListener);
+
+    _poseInfoController = StreamController.broadcast();
+    return _poseInfoController!.stream;
+  }
+
+  void stopCameraPoseStream() {
+    _compassSubscription?.cancel();
+    _nativePoseSubscription?.cancel();
+    _poseInfoController?.close();
+    _compassSubscription = null;
+    _nativePoseSubscription = null;
+    _poseInfoController = null;
+  }
+
+  void _cameraPoseListener(Matrix4 pose) {
+    _currentPoseInfo = ARCameraPoseInfo(pose, _currentPoseInfo?.heading ?? 0);
+    _poseInfoController?.add(_currentPoseInfo!);
+  }
+
+  void _compassEventListener(CompassEvent event) {
+    if (_currentPoseInfo == null) return;
+    _currentPoseInfo = _currentPoseInfo!.copyWith(heading: event.heading);
+    _poseInfoController?.add(_currentPoseInfo!);
   }
 
   /// Returns the camera pose in Matrix4 format with respect to the world coordinate system of the [ARView]
@@ -119,7 +140,9 @@ class ARSceneManager {
 
   /// Returns the distance in meters between @anchor1 and @anchor2.
   Future<double?> getDistanceBetweenAnchors(
-      ARAnchor anchor1, ARAnchor anchor2) async {
+    ARAnchor anchor1,
+    ARAnchor anchor2,
+  ) async {
     var anchor1Pose = await getPose(anchor1);
     var anchor2Pose = await getPose(anchor2);
     var anchor1Translation = anchor1Pose?.getTranslation();
