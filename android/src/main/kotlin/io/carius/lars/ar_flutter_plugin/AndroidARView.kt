@@ -26,6 +26,7 @@ import io.flutter.embedding.engine.loader.FlutterLoader
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.platform.PlatformView
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -38,18 +39,7 @@ import com.google.ar.sceneform.rendering.*
 import android.view.ViewGroup
 
 import com.google.ar.core.TrackingState
-
-
-
-
-
-
-
-
-
-
-
-
+import io.carius.lars.ar_flutter_plugin.Serialization.serializePose
 
 
 internal class AndroidARView(
@@ -69,6 +59,10 @@ internal class AndroidARView(
     private val sessionManagerChannel: MethodChannel = MethodChannel(messenger, "arsession_$id")
     private val objectManagerChannel: MethodChannel = MethodChannel(messenger, "arobjects_$id")
     private val anchorManagerChannel: MethodChannel = MethodChannel(messenger, "aranchors_$id")
+    private val sceneManagerChannel: MethodChannel = MethodChannel(messenger, "arscene_$id")
+    private val arCameraPositionChannel: EventChannel = EventChannel(messenger, "camera_pose_updates_$id")
+    private val arCameraPositionStreamHandler: ARCameraPoseStreamHandler = ARCameraPoseStreamHandler()
+
     // UI variables
     private lateinit var arSceneView: ArSceneView
     private lateinit var transformationSystem: TransformationSystem
@@ -268,6 +262,34 @@ internal class AndroidARView(
                     }
                 }
             }
+    private val onSceneMethodCall =
+            object : MethodChannel.MethodCallHandler {
+                override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+                    Log.d(TAG, "AndroidARView onsessionmethodcall reveived a call!")
+                    when (call.method) {
+                        "getAnchorPose" -> {
+                            val anchorNode = arSceneView.scene.findByName(call.argument("anchorId")) as AnchorNode?
+                            if (anchorNode != null) {
+                                result.success(serializePose(anchorNode.anchor!!.pose))
+                            } else {
+                                result.error("Error", "could not get anchor pose", null)
+                            }
+                        }
+                        "getCameraPose" -> {
+                            val cameraPose = arSceneView.arFrame?.camera?.displayOrientedPose
+                            if (cameraPose != null) {
+                                result.success(serializePose(cameraPose!!))
+                            } else {
+                                result.error("Error", "could not get camera pose", null)
+                            }
+                        }
+                        "dispose" -> {
+                            // dispose()
+                        }
+                        else -> {}
+                    }
+                }
+            }
 
     override fun getView(): View {
         return arSceneView
@@ -297,6 +319,8 @@ internal class AndroidARView(
         sessionManagerChannel.setMethodCallHandler(onSessionMethodCall)
         objectManagerChannel.setMethodCallHandler(onObjectMethodCall)
         anchorManagerChannel.setMethodCallHandler(onAnchorMethodCall)
+        sceneManagerChannel.setMethodCallHandler(onSceneMethodCall)
+        arCameraPositionChannel.setStreamHandler(arCameraPositionStreamHandler)
 
         //Original visualizer: com.google.ar.sceneform.ux.R.raw.sceneform_footprint
 
@@ -641,6 +665,10 @@ internal class AndroidARView(
             transformationSystem.selectNode(null)
         }
 
+        val cameraPose = arSceneView.arFrame?.camera?.displayOrientedPose
+        if(cameraPose != null){
+            arCameraPositionStreamHandler.updateCameraPose(cameraPose)
+        }
     }
 
     private fun addNode(dict_node: HashMap<String, Any>, dict_anchor: HashMap<String, Any>? = null): CompletableFuture<Boolean>{

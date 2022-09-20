@@ -11,6 +11,9 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
     let sessionManagerChannel: FlutterMethodChannel
     let objectManagerChannel: FlutterMethodChannel
     let anchorManagerChannel: FlutterMethodChannel
+    let sceneManagerChannel: FlutterMethodChannel
+    let arCameraPositionChannel: FlutterEventChannel
+    let arCameraPositionStreamHandler :ARCameraPoseStreamHandler
     var showPlanes = false
     var customPlaneTexturePath: String? = nil
     private var trackedPlanes = [UUID: (SCNNode, SCNNode)]()
@@ -47,6 +50,9 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         self.sessionManagerChannel = FlutterMethodChannel(name: "arsession_\(viewId)", binaryMessenger: messenger)
         self.objectManagerChannel = FlutterMethodChannel(name: "arobjects_\(viewId)", binaryMessenger: messenger)
         self.anchorManagerChannel = FlutterMethodChannel(name: "aranchors_\(viewId)", binaryMessenger: messenger)
+        self.sceneManagerChannel = FlutterMethodChannel(name: "arscene_\(viewId)", binaryMessenger: messenger)
+        self.arCameraPositionChannel = FlutterEventChannel(name: "camera_pose_updates_\(viewId)", binaryMessenger: messenger)
+        self.arCameraPositionStreamHandler = ARCameraPoseStreamHandler()
         super.init()
 
         let configuration = ARWorldTrackingConfiguration() // Create default configuration before initializeARView is called
@@ -58,6 +64,8 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         self.sessionManagerChannel.setMethodCallHandler(self.onSessionMethodCalled)
         self.objectManagerChannel.setMethodCallHandler(self.onObjectMethodCalled)
         self.anchorManagerChannel.setMethodCallHandler(self.onAnchorMethodCalled)
+        self.sceneManagerChannel.setMethodCallHandler(self.onSceneMethodCalled)
+        self.arCameraPositionChannel.setStreamHandler(arCameraPositionStreamHandler)
     }
 
     func view() -> UIView {
@@ -210,6 +218,33 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         }
     }
 
+    func onSceneMethodCalled(_ call :FlutterMethodCall, _ result:FlutterResult) {
+        let arguments = call.arguments as? Dictionary<String, Any>
+        switch call.method {
+             case "getCameraPose":
+                if let cameraPose = sceneView.session.currentFrame?.camera.transform {
+                    result(serializeMatrix(cameraPose))
+                } else {
+                    result(FlutterError())
+                }
+                break
+            case "getAnchorPose":
+                if let cameraPose = anchorCollection[arguments?["anchorId"] as! String]?.transform {
+                    result(serializeMatrix(cameraPose))
+                } else {
+                    result(FlutterError())
+                }
+                break
+            case "dispose":
+                // onDispose(result)
+                result(nil)
+                break
+            default:
+                result(FlutterMethodNotImplemented)
+                break
+        }
+    }
+
     func initializeARView(arguments: Dictionary<String,Any>, result: FlutterResult){
         // Set plane detection configuration
         self.configuration = ARWorldTrackingConfiguration()
@@ -354,6 +389,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                 print(error)
             }
         }
+        arCameraPositionStreamHandler.updateCameraPose(frame: frame)
     }
 
     func addNode(dict_node: Dictionary<String, Any>, dict_anchor: Dictionary<String, Any>? = nil) -> Future<Bool, Never> {
