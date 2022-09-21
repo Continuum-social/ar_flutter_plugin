@@ -690,6 +690,7 @@ internal class AndroidARView(
                                     val anchorNode = arSceneView.scene.findByName(anchorName) as AnchorNode?
                                     if (anchorNode != null) {
                                         anchorNode.addChild(node)
+                                        completableFutureSuccess.complete(true)
                                     } else {
                                         completableFutureSuccess.complete(false)
                                     }
@@ -717,6 +718,7 @@ internal class AndroidARView(
                                     val anchorNode = arSceneView.scene.findByName(anchorName) as AnchorNode?
                                     if (anchorNode != null) {
                                         anchorNode.addChild(node)
+                                        completableFutureSuccess.complete(true)
                                     } else {
                                         completableFutureSuccess.complete(false)
                                     }
@@ -747,6 +749,7 @@ internal class AndroidARView(
                                     val anchorNode = arSceneView.scene.findByName(anchorName) as AnchorNode?
                                     if (anchorNode != null) {
                                         anchorNode.addChild(node)
+                                        completableFutureSuccess.complete(true)
                                     } else {
                                         completableFutureSuccess.complete(false)
                                     }
@@ -779,6 +782,7 @@ internal class AndroidARView(
                                     val anchorNode = arSceneView.scene.findByName(anchorName) as AnchorNode?
                                     if (anchorNode != null) {
                                         anchorNode.addChild(node)
+                                        completableFutureSuccess.complete(true)
                                     } else {
                                         completableFutureSuccess.complete(false)
                                     }

@@ -408,6 +408,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                                     if let anchor = self.anchorCollection[anchorName]{
                                         // Attach node to the top-level node of the specified anchor
                                         self.sceneView.node(for: anchor)?.addChildNode(node)
+                                        promise(.success(true))
                                     } else {
                                         promise(.success(false))
                                     }
@@ -439,6 +440,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                                         if let anchor = self.anchorCollection[anchorName]{
                                             // Attach node to the top-level node of the specified anchor
                                             self.sceneView.node(for: anchor)?.addChildNode(node)
+                                            promise(.success(true))
                                         } else {
                                             promise(.success(false))
                                         }
@@ -472,6 +474,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                                     if let anchor = self.anchorCollection[anchorName]{
                                         // Attach node to the top-level node of the specified anchor
                                         self.sceneView.node(for: anchor)?.addChildNode(node)
+                                        promise(.success(true))
                                     } else {
                                         promise(.success(false))
                                     }
@@ -504,6 +507,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                                     if let anchor = self.anchorCollection[anchorName]{
                                         // Attach node to the top-level node of the specified anchor
                                         self.sceneView.node(for: anchor)?.addChildNode(node)
+                                        promise(.success(true))
                                     } else {
                                         promise(.success(false))
                                     }
