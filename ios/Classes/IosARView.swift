@@ -326,35 +326,19 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         }
         
         // Add coaching view
-        if let configShowAnimatedGuide = arguments["showAnimatedGuide"] as? Bool {
-            if configShowAnimatedGuide {
-                if self.sceneView.superview != nil && self.coachingView.superview == nil {
-                    self.sceneView.addSubview(self.coachingView)
-        //            self.coachingView.translatesAutoresizingMaskIntoConstraints = false
-                    self.coachingView.autoresizingMask = [
-                          .flexibleWidth, .flexibleHeight
-                        ]
-                    self.coachingView.session = self.sceneView.session
-                    self.coachingView.activatesAutomatically = true
-                    if configuration.planeDetection == .horizontal {
-                        self.coachingView.goal = .horizontalPlane
-                    }else{
-                        self.coachingView.goal = .verticalPlane
-                    }
-                    // TODO: look into constraints issue. This causes a crash:
-                    /**
-                     Terminating app due to uncaught exception 'NSGenericException', reason: 'Unable to activate constraint with anchors <NSLayoutXAxisAnchor:0x28342dec0 "ARCoachingOverlayView:0x13a470ae0.centerX"> and <NSLayoutXAxisAnchor:0x28342c680 "FlutterTouchInterceptingView:0x10bad1c90.centerX"> because they have no common ancestor.  Does the constraint or its anchors reference items in different view hierarchies?  That's illegal.'
-                     */
-        //            NSLayoutConstraint.activate([
-        //                self.coachingView.centerXAnchor.constraint(equalTo: self.sceneView.superview!.centerXAnchor),
-        //                self.coachingView.centerYAnchor.constraint(equalTo: self.sceneView.superview!.centerYAnchor),
-        //                self.coachingView.widthAnchor.constraint(equalTo: self.sceneView.superview!.widthAnchor),
-        //                self.coachingView.heightAnchor.constraint(equalTo: self.sceneView.superview!.heightAnchor)
-        //                ])
-                }
-            }
+        if let coachingConfig = deserializeCoachingConfig(arguments),
+           coachingConfig.showAnimatedGuide,
+           self.sceneView.superview != nil && self.coachingView.superview == nil {
+            self.sceneView.addSubview(self.coachingView)
+            self.coachingView.autoresizingMask = [
+                .flexibleWidth, .flexibleHeight
+            ]
+            self.coachingView.session = self.sceneView.session
+            self.coachingView.activatesAutomatically = true
+            self.coachingView.goal = coachingConfig.goal
         }
-    
+        
+        
         // Update session configuration
         self.sceneView.session.run(configuration)
     }
@@ -817,13 +801,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
 // ---------------------- ARCoachingOverlayViewDelegate ---------------------------------------
 
 extension IosARView: ARCoachingOverlayViewDelegate {
-    
-    func coachingOverlayViewWillActivate(_ coachingOverlayView: ARCoachingOverlayView){
-        // use this delegate method to hide anything in the UI that could cover the coaching overlay view
-    }
-    
-    func coachingOverlayViewDidRequestSessionReset(_ coachingOverlayView: ARCoachingOverlayView) {
-        // Reset the session.
-        self.sceneView.session.run(configuration, options: [.resetTracking])
+    func coachingOverlayViewDidDeactivate(_ coachingOverlayView: ARCoachingOverlayView ) {
+        self.sessionManagerChannel.invokeMethod("onAnimatedGuideDone", arguments: [])
     }
 }

@@ -17,3 +17,35 @@ func deserializeMatrix4(_ c: Array<NSNumber>) -> SCNMatrix4 {
     let matrix = SCNMatrix4(m11: coords[0], m12: coords[1],m13: coords[2], m14: coords[3], m21: coords[4], m22: coords[5], m23: coords[6], m24: coords[7], m31: coords[8], m32: coords[9], m33: coords[10], m34: coords[11], m41: coords[12], m42: coords[13], m43: coords[14], m44: coords[15])
     return matrix
 }
+
+func deserializeCoachingConfig(_ arguments: Dictionary<String,Any>) -> ArCoachingConfig? {
+    guard
+        let config = arguments["animatedGuideConfig"] as? Dictionary<String,Any>,
+        let configShowAnimatedGuide = config["showAnimatedGuide"] as? Bool,
+        let goalData = config["animatedGuideGoal"] as? Int else {
+        return nil
+    }
+    
+    let goal: ARCoachingOverlayView.Goal
+    switch(goalData){
+        case 0:
+            goal = .tracking
+            break
+        case 1:
+            goal = .horizontalPlane
+            break
+        case 2:
+            goal = .verticalPlane
+            break
+        case 3:
+            goal = .anyPlane
+            break
+        case 4:
+            goal = .geoTracking
+            break
+        default:
+            goal = .anyPlane
+            break
+    }
+    return ArCoachingConfig(showAnimatedGuide: configShowAnimatedGuide, goal: goal)
+}

@@ -103,7 +103,7 @@ class _DebugOptionsWidgetState extends State<DebugOptionsWidget> {
           showPlanes: _showPlanes,
           customPlaneTexturePath: _planeTexturePath,
           showWorldOrigin: _showWorldOrigin,
-          showAnimatedGuide: _showAnimatedGuide,
+          // showAnimatedGuide: _showAnimatedGuide,
           handleTaps: _handleTaps,
         );
     this.arObjectManager.onInitialize();
