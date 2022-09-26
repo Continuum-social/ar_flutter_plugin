@@ -7,6 +7,8 @@ import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.ux.BaseTransformableNode
 import com.google.ar.sceneform.ux.TransformableNode
+import kotlin.math.asin
+import kotlin.math.atan2
 
 fun serializeHitResult(hitResult: HitResult): HashMap<String, Any> {
     val serializedHitResult = HashMap<String,Any>()
@@ -40,8 +42,35 @@ fun serializePose(pose: Pose): DoubleArray {
 fun serializeCameraPoseInfo(pose: Pose): Map<String, Any> {
     return mapOf(
             "transform" to serializePose(pose),
-            "rotation" to pose.rotationQuaternion
+            "rotation" to quaternionToEulerAngles(pose.rotationQuaternion)
     )
+}
+
+fun quaternionToEulerAngles(rotationQuaternion: FloatArray) : FloatArray {
+    var result = floatArrayOf(0.0f, 0.0f, 0.0f)
+    if(rotationQuaternion.size < 4) {
+        return result
+    }
+
+    val w = rotationQuaternion[0]
+    val x = rotationQuaternion[1]
+    val y = rotationQuaternion[2];
+    val z = rotationQuaternion[3]
+
+    val t0 = 2 * (w * x + y * z)
+    val t1 = 1 - 2 * (x * x + y * y)
+    result[0] = atan2(t0, t1)
+
+    var  t2 = 2 * (w * y - z * x)
+    if (t2 > 1) { t2 = 1.0f }
+    else if (t2 < -1) { t2 = -1.0f }
+    result[1] = asin(t2)
+
+    val  t3 = 2 * (w * z + x * y)
+    val  t4 = 1 - 2 * (y * y + z * z)
+    result[2] = atan2(t3, t4)
+
+    return result
 }
 
 fun serializePoseWithScale(pose: Pose, scale: Vector3): DoubleArray {
