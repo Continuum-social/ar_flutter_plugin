@@ -37,6 +37,13 @@ fun serializePose(pose: Pose): DoubleArray {
     return serializedPoseDouble
 }
 
+fun serializeCameraPoseInfo(pose: Pose): Map<String, Any> {
+    return mapOf(
+            "transform" to serializePose(pose),
+            "rotation" to pose.rotationQuaternion
+    )
+}
+
 fun serializePoseWithScale(pose: Pose, scale: Vector3): DoubleArray {
     val serializedPose = FloatArray(16)
     pose.toMatrix(serializedPose, 0)

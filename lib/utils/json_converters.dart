@@ -17,3 +17,17 @@ class MatrixConverter implements JsonConverter<Matrix4, List<dynamic>> {
     return list;
   }
 }
+
+class Vector3Converter implements JsonConverter<Vector3, List<dynamic>> {
+  const Vector3Converter();
+
+  @override
+  Vector3 fromJson(List<dynamic> json) {
+    return Vector3.array(json.cast<double>());
+  }
+
+  @override
+  List<dynamic> toJson(Vector3 vector) {
+    return [vector.x, vector.y, vector.z];
+  }
+}

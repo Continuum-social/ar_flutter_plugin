@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:ar_flutter_plugin/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin/models/ar_camera_pose_info.dart';
 import 'package:ar_flutter_plugin/utils/json_converters.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:vector_math/vector_math_64.dart';
 import 'package:flutter/services.dart';
 
@@ -19,8 +18,7 @@ class ARSceneManager {
   ARCameraPoseInfo? get currentPoseInfo => _currentPoseInfo;
   ARCameraPoseInfo? _currentPoseInfo;
   StreamController<ARCameraPoseInfo>? _poseInfoController;
-  StreamSubscription<CompassEvent>? _compassSubscription;
-  StreamSubscription<Matrix4>? _nativePoseSubscription;
+  StreamSubscription<ARCameraPoseInfo>? _nativePoseSubscription;
 
   /// Debugging status flag. If true, all platform calls are printed. Defaults to false.
   final bool debug;
@@ -71,10 +69,9 @@ class ARSceneManager {
       },
     );
 
-    final poseStream = cameraPoseStream
-        .map<Matrix4>((dynamic element) =>
-            MatrixConverter().fromJson(element as List<dynamic>))
-        .handleError(
+    final poseStream = cameraPoseStream.map<ARCameraPoseInfo>((e) {
+      return ARCameraPoseInfo.fromJson(e);
+    }).handleError(
       (error) {
         if (error is PlatformException) {
           print('Error caught: ' + error.toString());
@@ -83,29 +80,20 @@ class ARSceneManager {
       },
     );
     _nativePoseSubscription = poseStream.listen(_cameraPoseListener);
-    _compassSubscription = FlutterCompass.events?.listen(_compassEventListener);
 
     _poseInfoController = StreamController.broadcast();
     return _poseInfoController!.stream;
   }
 
   void stopCameraPoseStream() {
-    _compassSubscription?.cancel();
     _nativePoseSubscription?.cancel();
     _poseInfoController?.close();
-    _compassSubscription = null;
     _nativePoseSubscription = null;
     _poseInfoController = null;
   }
 
-  void _cameraPoseListener(Matrix4 pose) {
-    _currentPoseInfo = ARCameraPoseInfo(pose, _currentPoseInfo?.heading ?? 0);
-    _poseInfoController?.add(_currentPoseInfo!);
-  }
-
-  void _compassEventListener(CompassEvent event) {
-    if (_currentPoseInfo == null) return;
-    _currentPoseInfo = _currentPoseInfo!.copyWith(heading: event.heading);
+  void _cameraPoseListener(ARCameraPoseInfo info) {
+    _currentPoseInfo = info;
     _poseInfoController?.add(_currentPoseInfo!);
   }
 

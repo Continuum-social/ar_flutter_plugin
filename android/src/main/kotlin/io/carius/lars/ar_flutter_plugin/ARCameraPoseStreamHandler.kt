@@ -1,6 +1,6 @@
 package io.carius.lars.ar_flutter_plugin
 import com.google.ar.core.Pose
-import io.carius.lars.ar_flutter_plugin.Serialization.serializePose
+import io.carius.lars.ar_flutter_plugin.Serialization.serializeCameraPoseInfo
 import io.flutter.plugin.common.EventChannel
 import java.util.*
 
@@ -16,6 +16,6 @@ class ARCameraPoseStreamHandler: EventChannel.StreamHandler {
     }
 
     fun updateCameraPose(pose: Pose) {
-        sink?.success(serializePose(pose))
+        sink?.success(serializeCameraPoseInfo(pose))
     }
 }
