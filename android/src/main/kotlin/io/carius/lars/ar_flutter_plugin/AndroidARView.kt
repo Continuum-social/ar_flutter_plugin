@@ -40,6 +40,7 @@ import android.view.ViewGroup
 
 import com.google.ar.core.TrackingState
 import io.carius.lars.ar_flutter_plugin.Serialization.serializePose
+import io.carius.lars.ar_flutter_plugin.Serialization.deserializeAnimatedGuideConfig
 
 
 internal class AndroidARView(
@@ -67,7 +68,7 @@ internal class AndroidARView(
     private lateinit var arSceneView: ArSceneView
     private lateinit var transformationSystem: TransformationSystem
     private var showFeaturePoints = false
-    private var showAnimatedGuide = false
+    private var animatedGuideConfig = ARAnimatedGuideConfig(false)
     private lateinit var animatedGuide: View
     private var pointCloudNode = Node()
     private var worldOriginNode = Node()
@@ -449,10 +450,10 @@ internal class AndroidARView(
 
     fun onPause() {
         // hide instructions view if no longer required
-        if (showAnimatedGuide){
+        if (animatedGuideConfig.showAnimatedGuide){
             val view = activity.findViewById(R.id.content) as ViewGroup
             view.removeView(animatedGuide)
-            showAnimatedGuide = false
+            animatedGuideConfig = ARAnimatedGuideConfig(false)
         }
         arSceneView.pause()
     }
@@ -478,8 +479,7 @@ internal class AndroidARView(
         val argHandleTaps: Boolean? = call.argument<Boolean>("handleTaps")
         val argHandleRotation: Boolean? = call.argument<Boolean>("handleRotation")
         val argHandlePans: Boolean? = call.argument<Boolean>("handlePans")
-        val argShowAnimatedGuide: Boolean? = call.argument<Boolean>("showAnimatedGuide")
-
+        val animatedGuideConfig: ARAnimatedGuideConfig = deserializeAnimatedGuideConfig(call.arguments)
 
         sceneUpdateListener = com.google.ar.sceneform.Scene.OnUpdateListener {
             frameTime: FrameTime -> onFrame(frameTime)
@@ -503,8 +503,8 @@ internal class AndroidARView(
 
 
         // Configure Plane scanning guide
-        if (argShowAnimatedGuide == true) { // explicit comparison necessary because of nullable type
-            showAnimatedGuide = true
+        this.animatedGuideConfig = animatedGuideConfig
+        if (animatedGuideConfig.showAnimatedGuide) { // explicit comparison necessary because of nullable type
             val view = activity.findViewById(R.id.content) as ViewGroup
             animatedGuide = activity.layoutInflater.inflate(com.google.ar.sceneform.ux.R.layout.sceneform_plane_discovery_layout, null)
             view.addView(animatedGuide)
@@ -610,15 +610,13 @@ internal class AndroidARView(
 
     private fun onFrame(frameTime: FrameTime) {
         // hide instructions view if no longer required
-        if (showAnimatedGuide && arSceneView.arFrame != null){
-            for (plane in arSceneView.arFrame!!.getUpdatedTrackables(Plane::class.java)) {
-                if (plane.trackingState === TrackingState.TRACKING) {
-                    val view = activity.findViewById(R.id.content) as ViewGroup
-                    view.removeView(animatedGuide)
-                    showAnimatedGuide = false
-                    break
-                }
-            }
+        if (animatedGuideConfig.showAnimatedGuide &&
+                arSceneView.arFrame != null &&
+                arSceneView.arFrame?.camera?.trackingState == TrackingState.TRACKING) {
+            val view = activity.findViewById(R.id.content) as ViewGroup
+            view.removeView(animatedGuide)
+            animatedGuideConfig = ARAnimatedGuideConfig(false)
+            sessionManagerChannel.invokeMethod("onAnimatedGuideDone", listOf<Boolean>())
         }
 
         if (showFeaturePoints) {

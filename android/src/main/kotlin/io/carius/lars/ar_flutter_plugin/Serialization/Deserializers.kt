@@ -2,6 +2,8 @@ package io.carius.lars.ar_flutter_plugin.Serialization
 
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
+import io.carius.lars.ar_flutter_plugin.ARAnimatedGuideConfig
+import kotlin.collections.ArrayList
 
 fun deserializeMatrix4(transform: ArrayList<Double>): Triple<Vector3, Vector3, Quaternion> {
   val scale = Vector3()
@@ -87,4 +89,13 @@ fun deserializeMatrix4(transform: ArrayList<Double>): Triple<Vector3, Vector3, Q
   rotation = Quaternion.multiply(Quaternion.multiply(inputRotation, correction_y), correction_z)
 
   return Triple(scale, position, rotation)
+}
+
+fun deserializeAnimatedGuideConfig(arguments: Any): ARAnimatedGuideConfig {
+  val dict: Map<String,Any> = (arguments as? Map<String,Any> ?)?: mapOf()
+  val argShowAnimatedGuide: Boolean? = dict["showAnimatedGuide"] as? Boolean;
+  if(argShowAnimatedGuide == null) {
+    return  ARAnimatedGuideConfig(false)
+  }
+  return  ARAnimatedGuideConfig(argShowAnimatedGuide);
 }
