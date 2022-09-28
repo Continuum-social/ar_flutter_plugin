@@ -1,14 +1,17 @@
 package io.carius.lars.ar_flutter_plugin.Serialization
 
+import android.R.attr.x
+import android.R.attr.y
 import com.google.ar.core.*
 import com.google.ar.sceneform.AnchorNode
-import com.google.ar.sceneform.math.Matrix
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.ux.BaseTransformableNode
-import com.google.ar.sceneform.ux.TransformableNode
+import com.google.sceneform_assets.w
+import com.google.sceneform_assets.z
 import kotlin.math.asin
 import kotlin.math.atan2
+
 
 fun serializeHitResult(hitResult: HitResult): HashMap<String, Any> {
     val serializedHitResult = HashMap<String,Any>()
@@ -42,35 +45,43 @@ fun serializePose(pose: Pose): DoubleArray {
 fun serializeCameraPoseInfo(pose: Pose): Map<String, Any> {
     return mapOf(
             "transform" to serializePose(pose),
-            "rotation" to quaternionToEulerAngles(pose.rotationQuaternion)
+            "rotation" to quaternionToAxisAngles(pose.rotationQuaternion)
     )
 }
 
-fun quaternionToEulerAngles(rotationQuaternion: FloatArray) : FloatArray {
-    var result = floatArrayOf(0.0f, 0.0f, 0.0f)
-    if(rotationQuaternion.size < 4) {
-        return result
+fun quaternionToAxisAngles(rotationQuaternion: FloatArray) : FloatArray {
+    val q = Quaternion(rotationQuaternion[0], rotationQuaternion[1], rotationQuaternion[2], rotationQuaternion[3])
+    q.normalize()
+    return quat2rpy(q)
+}
+
+fun quat2rpy(q: Quaternion): FloatArray {
+    val ax: Float // pitch
+    val ay: Float // yaw
+    val az: Float // roll
+
+    val sqw = q.w * q.w
+    val sqx = q.x * q.x
+    val sqy = q.y * q.y
+    val sqz = q.z * q.z
+    val unit = sqx + sqy + sqz + sqw // if normalized is one, otherwise
+    // is correction factor
+    val test = q.x * q.y + q.z * q.w
+    if (test > 0.499 * unit) { // singularity at north pole
+        ax = 0.0f
+        ay = 2 * atan2(q.x, q.w)
+        az = (Math.PI / 2).toFloat()
+    } else if (test < -0.499 * unit) { // singularity at south pole
+        ax = 0.0f
+        ay = -2 * atan2(q.x, q.w)
+        az = (-Math.PI/2).toFloat()
+    } else {
+        ax = atan2(2 * q.x * q.w - 2 * q.y * q.z, -sqx + sqy - sqz + sqw)
+        ay = atan2(2 * q.y * q.w - 2 * q.x * q.z, sqx - sqy - sqz + sqw)
+        az = asin(2 * test / unit)
     }
 
-    val w = rotationQuaternion[0]
-    val x = rotationQuaternion[1]
-    val y = rotationQuaternion[2];
-    val z = rotationQuaternion[3]
-
-    val t0 = 2 * (w * x + y * z)
-    val t1 = 1 - 2 * (x * x + y * y)
-    result[0] = atan2(t0, t1)
-
-    var  t2 = 2 * (w * y - z * x)
-    if (t2 > 1) { t2 = 1.0f }
-    else if (t2 < -1) { t2 = -1.0f }
-    result[1] = asin(t2)
-
-    val  t3 = 2 * (w * z + x * y)
-    val  t4 = 1 - 2 * (y * y + z * z)
-    result[2] = atan2(t3, t4)
-
-    return result
+    return floatArrayOf(-ax, -ay, -az)
 }
 
 fun serializePoseWithScale(pose: Pose, scale: Vector3): DoubleArray {
