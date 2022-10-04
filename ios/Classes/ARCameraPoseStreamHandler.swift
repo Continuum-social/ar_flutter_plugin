@@ -27,6 +27,6 @@ class ARCameraPoseStreamHandler: NSObject,  FlutterStreamHandler {
         guard let sink = sink else {
             return
         }
-        sink(serializeMatrix(frame.camera.transform))
+        sink(serializeARCamera(frame.camera))
     }
 }

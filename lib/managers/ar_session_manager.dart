@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:ar_flutter_plugin/models/ar_animated_guide_config.dart';
 import 'package:ar_flutter_plugin/models/ar_hittest_result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +24,8 @@ class ARSessionManager {
 
   /// Receives hit results from user taps with tracked planes or feature points
   late ARHitResultHandler onPlaneOrPointTap;
+
+  VoidCallback? _onAnimatedGuideDoneCallback;
 
   ARSessionManager(int id, this.buildContext, this.planeDetectionConfig,
       {this.debug = false}) {
@@ -58,6 +61,10 @@ class ARSessionManager {
             onPlaneOrPointTap(hitTestResults);
           }
           break;
+        case 'onAnimatedGuideDone':
+          _onAnimatedGuideDoneCallback?.call();
+          _onAnimatedGuideDoneCallback = null;
+          break;
         case 'dispose':
           _channel.invokeMethod<void>("dispose");
           break;
@@ -76,7 +83,7 @@ class ARSessionManager {
   /// [customPlaneTexturePath] refers to flutter assets from the app that is calling this function, NOT to assets within this plugin. Make sure
   /// the assets are correctly registered in the pubspec.yaml of the parent app (e.g. the ./example app in this plugin's repo)
   onInitialize({
-    bool showAnimatedGuide = true,
+    ARAnimatedGuideConfig? animatedGuideConfig,
     bool showFeaturePoints = false,
     bool showPlanes = true,
     String? customPlaneTexturePath,
@@ -85,8 +92,9 @@ class ARSessionManager {
     bool handlePans = false, // nodes are not draggable by default
     bool handleRotation = false, // nodes can not be rotated by default
   }) {
+    _onAnimatedGuideDoneCallback = animatedGuideConfig?.onDone;
     _channel.invokeMethod<void>('init', {
-      'showAnimatedGuide': showAnimatedGuide,
+      'animatedGuideConfig': animatedGuideConfig?.toMap(),
       'showFeaturePoints': showFeaturePoints,
       'planeDetectionConfig': planeDetectionConfig.index,
       'showPlanes': showPlanes,
