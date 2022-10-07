@@ -3,6 +3,7 @@ package io.carius.lars.ar_flutter_plugin.Serialization
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import io.carius.lars.ar_flutter_plugin.ARAnimatedGuideConfig
+import io.carius.lars.ar_flutter_plugin.ARPinchConfig
 import kotlin.collections.ArrayList
 
 fun deserializeMatrix4(transform: ArrayList<Double>): Triple<Vector3, Vector3, Quaternion> {
@@ -91,11 +92,33 @@ fun deserializeMatrix4(transform: ArrayList<Double>): Triple<Vector3, Vector3, Q
   return Triple(scale, position, rotation)
 }
 
+fun deserializeVector3(array: Array<Float>): Vector3? {
+  if(array.size< 3) return null
+  return Vector3(array[0], array[1], array[2])
+}
+
 fun deserializeAnimatedGuideConfig(arguments: Any): ARAnimatedGuideConfig {
-  val dict: Map<String,Any> = (arguments as? Map<String,Any> ?)?: mapOf()
-  val argShowAnimatedGuide: Boolean? = dict["showAnimatedGuide"] as? Boolean;
-  if(argShowAnimatedGuide == null) {
-    return  ARAnimatedGuideConfig(false)
+  var dict: Map<String,Any> = (arguments as? Map<String,Any> ?)?: mapOf()
+  dict = (dict["animatedGuideConfig"] as? Map<String,Any> ?)?: mapOf()
+  val argShowAnimatedGuide: Boolean? = dict["showAnimatedGuide"] as? Boolean
+  return  ARAnimatedGuideConfig(argShowAnimatedGuide == true)
+}
+
+fun deserializePinchConfig(arguments: Any): ARPinchConfig {
+  var dict: Map<String,Any> = (arguments as? Map<String,Any> ?)?: mapOf()
+  dict = (dict["pinchConfig"] as? Map<String,Any> ?)?: mapOf()
+
+  var minZoom: Vector3? = null
+  var maxZoom: Vector3? = null
+
+  val minZoomArr = dict["minZoom"] as? Array<Float>
+  if(minZoomArr != null){
+    minZoom = deserializeVector3(minZoomArr)
   }
-  return  ARAnimatedGuideConfig(argShowAnimatedGuide);
+  val maxZoomArr = dict["maxZoom"] as? Array<Float>
+  if(maxZoomArr != null){
+    maxZoom = deserializeVector3(maxZoomArr)
+  }
+
+  return ARPinchConfig(minZoom, maxZoom)
 }

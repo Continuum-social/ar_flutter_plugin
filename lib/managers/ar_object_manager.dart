@@ -14,6 +14,9 @@ typedef NodePanEndHandler = void Function(String node, Matrix4 transform);
 typedef NodeRotationStartHandler = void Function(String node);
 typedef NodeRotationChangeHandler = void Function(String node);
 typedef NodeRotationEndHandler = void Function(String node, Matrix4 transform);
+typedef NodePinchStartHandler = void Function(String node);
+typedef NodePinchChangeHandler = void Function(String node);
+typedef NodePinchEndHandler = void Function(String node, Matrix4 transform);
 
 /// Manages the all node-related actions of an [ARView]
 class ARObjectManager {
@@ -31,6 +34,9 @@ class ARObjectManager {
   NodeRotationStartHandler? onRotationStart;
   NodeRotationChangeHandler? onRotationChange;
   NodeRotationEndHandler? onRotationEnd;
+  NodePinchStartHandler? onPinchStart;
+  NodePinchChangeHandler? onPinchChange;
+  NodePinchEndHandler? onPinchEnd;
 
   ARObjectManager(int id, {this.debug = false}) {
     _channel = MethodChannel('arobjects_$id');
@@ -101,6 +107,27 @@ class ARObjectManager {
 
             // Notify callback
             onRotationEnd!(tappedNodeName, transform);
+          }
+          break;
+        case 'onPinchStart':
+          if (onPinchStart != null) {
+            final tappedNode = call.arguments as String;
+            onPinchStart!(tappedNode);
+          }
+          break;
+        case 'onPinchChange':
+          if (onPinchChange != null) {
+            final tappedNode = call.arguments as String;
+            onPinchChange!(tappedNode);
+          }
+          break;
+        case 'onPinchEnd':
+          if (onPinchEnd != null) {
+            final tappedNodeName = call.arguments["name"] as String;
+            final transform =
+                MatrixConverter().fromJson(call.arguments['transform'] as List);
+            // Notify callback
+            onPinchEnd!(tappedNodeName, transform);
           }
           break;
         default:

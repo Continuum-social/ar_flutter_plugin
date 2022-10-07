@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:ar_flutter_plugin/models/ar_animated_guide_config.dart';
 import 'package:ar_flutter_plugin/models/ar_hittest_result.dart';
+import 'package:ar_flutter_plugin/models/ar_pinch_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ar_flutter_plugin/datatypes/config_planedetection.dart';
@@ -91,6 +92,8 @@ class ARSessionManager {
     bool handleTaps = true,
     bool handlePans = false, // nodes are not draggable by default
     bool handleRotation = false, // nodes can not be rotated by default
+    bool handlePinch = false, // nodes can not be pinched by default
+    ARPinchConfig? pinchConfig,
   }) {
     _onAnimatedGuideDoneCallback = animatedGuideConfig?.onDone;
     _channel.invokeMethod<void>('init', {
@@ -103,6 +106,8 @@ class ARSessionManager {
       'handleTaps': handleTaps,
       'handlePans': handlePans,
       'handleRotation': handleRotation,
+      'handlePinch': handlePinch,
+      'pinchConfig': pinchConfig?.toMap()
     });
   }
 

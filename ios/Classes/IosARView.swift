@@ -33,8 +33,12 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
     private var panCurrentVelocity: CGPoint?
     private var panCurrentTranslation: CGPoint?
     private var rotationStartLocation: CGPoint?
+    private var pinchStartLocation: CGPoint?
     private var rotation: CGFloat?
     private var rotationVelocity: CGFloat?
+    private var pinchConfig: ARPinchConfig?
+    private var pinchScale: CGFloat?
+    private var pinchVelocity: CGFloat?
     private var panningNode: SCNNode?
     private var panningNodeCurrentWorldLocation: SCNVector3?
 
@@ -320,6 +324,15 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         if let configHandleRotation = arguments["handleRotation"] as? Bool {
             if (configHandleRotation){
                 let rotationGestureRecognizer = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
+                rotationGestureRecognizer.delegate = self
+                self.sceneView.gestureRecognizers?.append(rotationGestureRecognizer)
+            }
+        }
+        
+        pinchConfig = deserealizePinchConfig(arguments)
+        if let configHandlePinch = arguments["handlePinch"] as? Bool {
+            if (configHandlePinch){
+                let rotationGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
                 rotationGestureRecognizer.delegate = self
                 self.sceneView.gestureRecognizers?.append(rotationGestureRecognizer)
             }
@@ -673,6 +686,75 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
             rotation = nil
             rotationVelocity = nil
             self.objectManagerChannel.invokeMethod("onRotationEnd", arguments: serializeLocalTransformation(node: panningNode))
+            panningNode = nil
+        }
+    
+    }
+    
+    @objc func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard let sceneView = recognizer.view as? ARSCNView else {
+            return
+        }
+
+        // State Begins
+        if recognizer.state == UIGestureRecognizer.State.began
+        {
+            pinchStartLocation = recognizer.location(in: sceneView)
+            if let startLocation = pinchStartLocation {
+                let allHitResults = sceneView.hitTest(startLocation, options: [SCNHitTestOption.searchMode : SCNHitTestSearchMode.closest.rawValue])
+                // Because 3D model loading can lead to composed nodes, we have to traverse through a node's parent until the parent node with the name assigned by the Flutter API is found
+                let nodeHitResults: Array<String> = allHitResults.compactMap {
+                    if let nearestNode = nearestParentWithNameStart(node: $0.node, characters: "[#") {
+                        panningNode = nearestNode
+                        return nearestNode.name
+                    }else{
+                        return nil
+                    }
+                }
+                if (nodeHitResults.count != 0 && panningNode != nil) {
+                    self.objectManagerChannel.invokeMethod("onPinchStart", arguments: panningNode!.name) // Chaining of Array and Set is used to remove duplicates
+                    return
+                }
+            }
+        }
+        // State Changes
+        if(recognizer.state == UIGestureRecognizer.State.changed)
+        {
+            pinchScale = recognizer.scale
+            pinchVelocity = recognizer.velocity
+
+            if let r = pinchVelocity, let panNode = panningNode {
+                let r2 = r * 0.01
+                print(r2)
+                let nodeScale = panNode.scale
+                let newScale = SCNVector3(
+                    x: nodeScale.x + nodeScale.x * Float(r2),
+                    y: nodeScale.y + nodeScale.y * Float(r2),
+                    z: nodeScale.z + nodeScale.z * Float(r2))
+                
+                if let minZoom = pinchConfig?.minZoom,
+                   minZoom.x > newScale.x || minZoom.y > newScale.y || minZoom.z > newScale.z {
+                    return
+                }
+                if let maxZoom = pinchConfig?.maxZoom,
+                   maxZoom.x < newScale.x || maxZoom.y < newScale.y || maxZoom.z < newScale.z {
+                    return
+                }
+                
+                panNode.scale = newScale
+                self.objectManagerChannel.invokeMethod("onPinchChange", arguments: panNode.name)
+            }
+
+            // update position of panning node if it has been created
+            // panningNode.position + the gesture delta
+        }
+        // State Ended
+        if(recognizer.state == UIGestureRecognizer.State.ended)
+        {
+            // kill variables
+            pinchScale = nil
+            pinchVelocity = nil
+            self.objectManagerChannel.invokeMethod("onPinchEnd", arguments: serializeLocalTransformation(node: panningNode))
             panningNode = nil
         }
     

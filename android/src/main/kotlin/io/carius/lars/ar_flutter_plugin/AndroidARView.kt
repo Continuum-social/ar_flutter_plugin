@@ -18,9 +18,6 @@ import com.google.ar.core.exceptions.*
 import com.google.ar.sceneform.*
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.ux.*
-import io.carius.lars.ar_flutter_plugin.Serialization.deserializeMatrix4
-import io.carius.lars.ar_flutter_plugin.Serialization.serializeAnchor
-import io.carius.lars.ar_flutter_plugin.Serialization.serializeHitResult
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.loader.FlutterLoader
 import io.flutter.plugin.common.BinaryMessenger
@@ -39,8 +36,7 @@ import com.google.ar.sceneform.rendering.*
 import android.view.ViewGroup
 
 import com.google.ar.core.TrackingState
-import io.carius.lars.ar_flutter_plugin.Serialization.serializePose
-import io.carius.lars.ar_flutter_plugin.Serialization.deserializeAnimatedGuideConfig
+import io.carius.lars.ar_flutter_plugin.Serialization.*
 
 
 internal class AndroidARView(
@@ -76,6 +72,8 @@ internal class AndroidARView(
     private var enableRotation = false
     private var enablePans = false
     private var keepNodeSelected = true;
+    private var enablePinch = false
+    private var pinchConfig: ARPinchConfig? = null;
     private var footprintSelectionVisualizer = FootprintSelectionVisualizer()
     // Model builder
     private var modelBuilder = ArModelBuilder()
@@ -479,6 +477,8 @@ internal class AndroidARView(
         val argHandleTaps: Boolean? = call.argument<Boolean>("handleTaps")
         val argHandleRotation: Boolean? = call.argument<Boolean>("handleRotation")
         val argHandlePans: Boolean? = call.argument<Boolean>("handlePans")
+        val argHandlePinch: Boolean? = call.argument<Boolean>("handlePinch")
+        val argPinchConfig: ARPinchConfig? = deserializePinchConfig(call.arguments)
         val animatedGuideConfig: ARAnimatedGuideConfig = deserializeAnimatedGuideConfig(call.arguments)
 
         sceneUpdateListener = com.google.ar.sceneform.Scene.OnUpdateListener {
@@ -592,18 +592,24 @@ internal class AndroidARView(
         }
 
         // Configure gestures
-        if (argHandleRotation ==
-                true) { // explicit comparison necessary because of nullable type
+        if (argHandleRotation == true) { // explicit comparison necessary because of nullable type
             enableRotation = true
         } else {
             enableRotation = false
         }
-        if (argHandlePans ==
-                true) { // explicit comparison necessary because of nullable type
+        if (argHandlePans ==  true) { // explicit comparison necessary because of nullable type
             enablePans = true
         } else {
             enablePans = false
         }
+
+        if (argHandlePinch ==  true) { // explicit comparison necessary because of nullable type
+            enablePinch = true
+        } else {
+            enablePinch = false
+        }
+
+        pinchConfig = argPinchConfig
 
         result.success(null)
     }
@@ -680,7 +686,7 @@ internal class AndroidARView(
                     val key: String = loader.getLookupKeyForAsset(dict_node["uri"] as String)
 
                     // Add object to scene
-                    modelBuilder.makeNodeFromGltf(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, dict_node["name"] as String, key, dict_node["transformation"] as ArrayList<Double>)
+                    modelBuilder.makeNodeFromGltf(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, enablePinch, pinchConfig, dict_node["name"] as String, key, dict_node["transformation"] as ArrayList<Double>)
                             .thenAccept{node ->
                                 val anchorName: String? = dict_anchor?.get("name") as? String
                                 val anchorType: Int? = dict_anchor?.get("type") as? Int
@@ -708,7 +714,7 @@ internal class AndroidARView(
                             }
                 }
                 1 -> { // GLB Model from the web
-                    modelBuilder.makeNodeFromGlb(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, dict_node["name"] as String, dict_node["uri"] as String, dict_node["transformation"] as ArrayList<Double>)
+                    modelBuilder.makeNodeFromGlb(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, enablePinch, pinchConfig, dict_node["name"] as String, dict_node["uri"] as String, dict_node["transformation"] as ArrayList<Double>)
                             .thenAccept{node ->
                                 val anchorName: String? = dict_anchor?.get("name") as? String
                                 val anchorType: Int? = dict_anchor?.get("type") as? Int
@@ -739,7 +745,7 @@ internal class AndroidARView(
                     val documentsPath = viewContext.getApplicationInfo().dataDir
                     val assetPath = documentsPath + "/app_flutter/" + dict_node["uri"] as String
 
-                    modelBuilder.makeNodeFromGlb(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, dict_node["name"] as String, assetPath as String, dict_node["transformation"] as ArrayList<Double>) //
+                    modelBuilder.makeNodeFromGlb(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, enablePinch, pinchConfig, dict_node["name"] as String, assetPath as String, dict_node["transformation"] as ArrayList<Double>) //
                             .thenAccept{node ->
                                 val anchorName: String? = dict_anchor?.get("name") as? String
                                 val anchorType: Int? = dict_anchor?.get("type") as? Int
@@ -772,7 +778,7 @@ internal class AndroidARView(
                     val assetPath = documentsPath + "/app_flutter/" + dict_node["uri"] as String
 
                     // Add object to scene
-                    modelBuilder.makeNodeFromGltf(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, dict_node["name"] as String, assetPath, dict_node["transformation"] as ArrayList<Double>)
+                    modelBuilder.makeNodeFromGltf(viewContext, transformationSystem, objectManagerChannel, enablePans, enableRotation, enablePinch, pinchConfig, dict_node["name"] as String, assetPath, dict_node["transformation"] as ArrayList<Double>)
                             .thenAccept{node ->
                                 val anchorName: String? = dict_anchor?.get("name") as? String
                                 val anchorType: Int? = dict_anchor?.get("type") as? Int
@@ -830,7 +836,7 @@ internal class AndroidARView(
             return true
         }
         if (motionEvent != null && motionEvent.action == MotionEvent.ACTION_DOWN) {
-            if (transformationSystem.selectedNode == null || (!enablePans && !enableRotation)){
+            if (transformationSystem.selectedNode == null || (!enablePans && !enableRotation && !enablePinch)){
                 val allHitResults = frame?.hitTest(motionEvent) ?: listOf<HitResult>()
                 val planeAndPointHitResults =
                     allHitResults.filter { ((it.trackable is Plane) || (it.trackable is Point)) }

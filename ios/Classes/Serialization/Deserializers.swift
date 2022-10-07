@@ -49,3 +49,19 @@ func deserializeCoachingConfig(_ arguments: Dictionary<String,Any>) -> ArCoachin
     }
     return ArCoachingConfig(showAnimatedGuide: configShowAnimatedGuide, goal: goal)
 }
+
+func deserealizePinchConfig(_ arguments: Dictionary<String,Any>) -> ARPinchConfig? {
+    guard let config = arguments["pinchConfig"] as? Dictionary<String,Any> else {
+        return nil
+    }
+    
+    var minZoom: SCNVector3?
+    var maxZoom: SCNVector3?
+    if let minZoomArr = config["minZoom"] as? Array<Double> {
+        minZoom = deserializeVector3(minZoomArr)
+    }
+    if let maxZoomArr = config["maxZoom"] as? Array<Double> {
+        maxZoom = deserializeVector3(maxZoomArr)
+    }
+    return ARPinchConfig(minZoom: minZoom, maxZoom: maxZoom)
+}

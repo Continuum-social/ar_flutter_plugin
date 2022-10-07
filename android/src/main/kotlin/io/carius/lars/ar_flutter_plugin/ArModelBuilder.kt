@@ -28,6 +28,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.security.AccessController
+import kotlin.math.max
 
 
 // Responsible for creating Renderables and Nodes
@@ -91,10 +92,10 @@ class ArModelBuilder {
     }
 
     // Creates a node form a given gltf model path or URL. The gltf asset loading in Scenform is asynchronous, so the function returns a completable future of type Node
-    fun makeNodeFromGltf(context: Context, transformationSystem: TransformationSystem, objectManagerChannel: MethodChannel, enablePans: Boolean, enableRotation: Boolean, name: String, modelPath: String, transformation: ArrayList<Double>): CompletableFuture<CustomTransformableNode> {
+    fun makeNodeFromGltf(context: Context, transformationSystem: TransformationSystem, objectManagerChannel: MethodChannel, enablePans: Boolean, enableRotation: Boolean, enablePinch: Boolean, pinchConfig: ARPinchConfig?, name: String, modelPath: String, transformation: ArrayList<Double>): CompletableFuture<CustomTransformableNode> {
         val completableFutureNode: CompletableFuture<CustomTransformableNode> = CompletableFuture()
 
-        val gltfNode = CustomTransformableNode(transformationSystem, objectManagerChannel, enablePans, enableRotation)
+        val gltfNode = CustomTransformableNode(transformationSystem, objectManagerChannel, enablePans, enableRotation, enablePinch, pinchConfig)
 
         ModelRenderable.builder()
                 .setSource(context, RenderableSource.builder().setSource(
@@ -122,10 +123,10 @@ class ArModelBuilder {
     }
 
     // Creates a node form a given glb model path or URL. The gltf asset loading in Sceneform is asynchronous, so the function returns a compleatable future of type Node
-    fun makeNodeFromGlb(context: Context, transformationSystem: TransformationSystem, objectManagerChannel: MethodChannel, enablePans: Boolean, enableRotation: Boolean, name: String, modelPath: String, transformation: ArrayList<Double>): CompletableFuture<CustomTransformableNode> {
+    fun makeNodeFromGlb(context: Context, transformationSystem: TransformationSystem, objectManagerChannel: MethodChannel, enablePans: Boolean, enableRotation: Boolean, enablePinch: Boolean, pinchConfig: ARPinchConfig?, name: String, modelPath: String, transformation: ArrayList<Double>): CompletableFuture<CustomTransformableNode> {
         val completableFutureNode: CompletableFuture<CustomTransformableNode> = CompletableFuture()
 
-        val gltfNode = CustomTransformableNode(transformationSystem, objectManagerChannel, enablePans, enableRotation)
+        val gltfNode = CustomTransformableNode(transformationSystem, objectManagerChannel, enablePans, enableRotation, enablePinch, pinchConfig)
         //gltfNode.scaleController.isEnabled = false
         //gltfNode.translationController.isEnabled = false
 
@@ -164,12 +165,14 @@ class ArModelBuilder {
     }
 }
 
-class CustomTransformableNode(transformationSystem: TransformationSystem, objectManagerChannel: MethodChannel, enablePans: Boolean, enableRotation: Boolean) :
+class CustomTransformableNode(transformationSystem: TransformationSystem, objectManagerChannel: MethodChannel, enablePans: Boolean, enableRotation: Boolean, enablePinch: Boolean, pinchConfig: ARPinchConfig?) :
     TransformableNode(transformationSystem) { //
 
     private lateinit var customTranslationController: CustomTranslationController
 
     private lateinit var customRotationController: CustomRotationController
+
+    private lateinit var customPinchController: CustomPinchController
 
     init {
         // Remove standard controllers
@@ -197,6 +200,20 @@ class CustomTransformableNode(transformationSystem: TransformationSystem, object
                 objectManagerChannel
             )
             addTransformationController(customRotationController)
+        }
+        if (enablePinch) {
+            customPinchController = CustomPinchController(
+                    this,
+                    transformationSystem.pinchRecognizer,
+                    objectManagerChannel
+            )
+            if(pinchConfig?.maxZoom != null){
+                customPinchController.maxScale = Math.min(Math.min(pinchConfig.maxZoom.x, pinchConfig.maxZoom.y), pinchConfig.maxZoom.z)
+            }
+            if(pinchConfig?.minZoom != null){
+                customPinchController.minScale = Math.max(Math.max(pinchConfig.minZoom.x, pinchConfig.minZoom.y), pinchConfig.minZoom.z)
+            }
+            addTransformationController(customPinchController)
         }
     }
 }
@@ -245,4 +262,27 @@ class CustomRotationController(transformableNode: BaseTransformableNode, gesture
         platformChannel.invokeMethod("onRotationEnd", serializedLocalTransformation)
         super.onEndTransformation(gesture)
      }
+}
+
+class CustomPinchController(transformableNode: BaseTransformableNode, gestureRecognizer: PinchGestureRecognizer, objectManagerChannel: MethodChannel) :
+        ScaleController(transformableNode, gestureRecognizer) {
+
+    val platformChannel: MethodChannel = objectManagerChannel
+
+    override fun canStartTransformation(gesture: PinchGesture): Boolean {
+        platformChannel.invokeMethod("onPinchStart", transformableNode.name)
+        super.canStartTransformation(gesture)
+        return transformableNode.isSelected
+    }
+
+    override fun onContinueTransformation(gesture: PinchGesture) {
+        platformChannel.invokeMethod("onPinchChange", transformableNode.name)
+        super.onContinueTransformation(gesture)
+    }
+
+    override fun onEndTransformation(gesture: PinchGesture) {
+        val serializedLocalTransformation = serializeLocalTransformation(transformableNode)
+        platformChannel.invokeMethod("onPinchEnd", serializedLocalTransformation)
+        super.onEndTransformation(gesture)
+    }
 }
