@@ -77,12 +77,15 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
     }
 
     func onDispose(_ result:FlutterResult) {
-                sceneView.session.pause()
-                self.sessionManagerChannel.setMethodCallHandler(nil)
-                self.objectManagerChannel.setMethodCallHandler(nil)
-                self.anchorManagerChannel.setMethodCallHandler(nil)
-                result(nil)
-            }
+        sceneView.session.pause()
+        self.sessionManagerChannel.setMethodCallHandler(nil)
+        self.objectManagerChannel.setMethodCallHandler(nil)
+        self.anchorManagerChannel.setMethodCallHandler(nil)
+        self.sceneManagerChannel.setMethodCallHandler(nil)
+        self.arCameraPositionChannel.setStreamHandler(nil)
+        arcoreSession = nil
+        result(nil)
+    }
 
     func onSessionMethodCalled(_ call :FlutterMethodCall, _ result:FlutterResult) {
         let arguments = call.arguments as? Dictionary<String, Any>
