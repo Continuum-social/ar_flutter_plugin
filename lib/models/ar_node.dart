@@ -113,6 +113,16 @@ class ARNode {
         transformation: MatrixConverter().fromJson(map["transformation"]),
         data: Map<String, dynamic>.from(map["data"]));
   }
+
+  static ARNode fromTransformMap(Map<String, dynamic> map) {
+    return ARNode(
+      type: NodeType.localGLTF2,
+      uri: "",
+      name: map["name"] as String?,
+      transformation: MatrixConverter().fromJson(map["transform"]),
+      data: {},
+    );
+  }
 }
 
 /// Helper function to create a Matrix4 from either a given matrix or from position, scale and rotation relative to the origin

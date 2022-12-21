@@ -4,11 +4,14 @@ import android.R.attr.x
 import android.R.attr.y
 import com.google.ar.core.*
 import com.google.ar.sceneform.AnchorNode
+import com.google.ar.sceneform.Node
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.ux.BaseTransformableNode
 import com.google.sceneform_assets.w
 import com.google.sceneform_assets.z
+import io.carius.lars.ar_flutter_plugin.CustomTransformableNode
+import java.util.ArrayList
 import kotlin.math.asin
 import kotlin.math.atan2
 
@@ -42,11 +45,14 @@ fun serializePose(pose: Pose): DoubleArray {
     return serializedPoseDouble
 }
 
-fun serializeCameraPoseInfo(pose: Pose): Map<String, Any> {
-    return mapOf(
+fun serializeCameraPoseInfo(pose: Pose, visibleNodes: Array<Node>): Map<String, Any> {
+    val nodes = visibleNodes.map { serializeLocalTransformation(it)  }.toList()
+    val map = mapOf(
             "transform" to serializePose(pose),
-            "rotation" to quaternionToAxisAngles(pose.rotationQuaternion)
+            "rotation" to quaternionToAxisAngles(pose.rotationQuaternion),
+            "visibleNodes" to nodes
     )
+    return map
 }
 
 fun quaternionToAxisAngles(rotationQuaternion: FloatArray) : FloatArray {
@@ -115,7 +121,7 @@ fun serializeAnchor(anchorNode: AnchorNode, anchor: Anchor?): HashMap<String, An
     return serializedAnchor
 }
 
-fun serializeLocalTransformation(node: BaseTransformableNode): HashMap<String, Any>{
+fun serializeLocalTransformation(node: Node): HashMap<String, Any>{
     val serializedLocalTransformation = HashMap<String, Any>()
     serializedLocalTransformation["name"] = node.name
 

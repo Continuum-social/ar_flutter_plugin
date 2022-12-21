@@ -1,5 +1,6 @@
 package io.carius.lars.ar_flutter_plugin
 
+import android.R
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -12,31 +13,27 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.PixelCopy
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import com.google.ar.core.*
 import com.google.ar.core.exceptions.*
 import com.google.ar.sceneform.*
+import com.google.ar.sceneform.collision.Ray
 import com.google.ar.sceneform.math.Vector3
+import com.google.ar.sceneform.rendering.*
 import com.google.ar.sceneform.ux.*
+import io.carius.lars.ar_flutter_plugin.Serialization.*
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.loader.FlutterLoader
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.platform.PlatformView
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.FloatBuffer
 import java.util.concurrent.CompletableFuture
-
-import android.R
-import com.google.ar.sceneform.rendering.*
-
-import android.view.ViewGroup
-
-import com.google.ar.core.TrackingState
-import io.carius.lars.ar_flutter_plugin.Serialization.*
 
 
 internal class AndroidARView(
@@ -670,9 +667,26 @@ internal class AndroidARView(
         }
 
         val cameraPose = arSceneView.arFrame?.camera?.displayOrientedPose
-        if(cameraPose != null){
-            arCameraPositionStreamHandler.updateCameraPose(cameraPose)
+        if(cameraPose != null) {
+            val visibleNodes = calculateVisibleNodes()
+            arCameraPositionStreamHandler.updateCameraPose(cameraPose, visibleNodes)
         }
+    }
+
+    private fun calculateVisibleNodes(): Array<Node> {
+        var visibleNodes = mutableListOf<Node>()
+
+        val camera = arSceneView.scene.camera
+        val ray = Ray(camera.worldPosition, camera.forward)
+
+        val results = arSceneView.scene.hitTestAll(ray)
+        for( result in results){
+            val node = result.node
+            if (node != null) {
+                visibleNodes.add(node)
+            }
+        }
+        return visibleNodes.toTypedArray()
     }
 
     private fun addNode(dict_node: HashMap<String, Any>, dict_anchor: HashMap<String, Any>? = null): CompletableFuture<Boolean>{

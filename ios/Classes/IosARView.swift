@@ -389,7 +389,21 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                 print(error)
             }
         }
-        arCameraPositionStreamHandler.updateCameraPose(frame: frame)
+        let visibleNodes = calculateVisibleNodes()
+        arCameraPositionStreamHandler.updateCameraPose(frame: frame, visibleNodes: visibleNodes)
+    }
+    
+    func calculateVisibleNodes() -> [SCNNode] {
+        guard let pointOfView = sceneView.pointOfView else {
+            return []
+        }
+        var visibleNodes: [SCNNode] = []
+        for node in sceneView.scene.rootNode.childNodes {
+            if sceneView.isNode(node, insideFrustumOf: pointOfView) {
+                visibleNodes.append(node)
+            }
+        }
+        return visibleNodes
     }
 
     func addNode(dict_node: Dictionary<String, Any>, dict_anchor: Dictionary<String, Any>? = nil) -> Future<Bool, Never> {

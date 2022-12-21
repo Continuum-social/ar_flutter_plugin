@@ -23,10 +23,10 @@ class ARCameraPoseStreamHandler: NSObject,  FlutterStreamHandler {
         return nil
     }
     
-    func updateCameraPose(frame: ARFrame) {
+    func updateCameraPose(frame: ARFrame, visibleNodes: [SCNNode]) {
         guard let sink = sink else {
             return
         }
-        sink(serializeARCamera(frame.camera))
+        sink(serializeARCamera(frame.camera, visibleNodes: visibleNodes))
     }
 }
