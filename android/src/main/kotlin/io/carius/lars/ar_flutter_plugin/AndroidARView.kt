@@ -6,6 +6,7 @@ import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
@@ -30,6 +31,10 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.Unconfined
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.FloatBuffer
@@ -55,7 +60,9 @@ internal class AndroidARView(
     private val anchorManagerChannel: MethodChannel = MethodChannel(messenger, "aranchors_$id")
     private val sceneManagerChannel: MethodChannel = MethodChannel(messenger, "arscene_$id")
     private val arCameraPositionChannel: EventChannel = EventChannel(messenger, "camera_pose_updates_$id")
+    private val arVisibleNodesChannel: EventChannel = EventChannel(messenger, "visible_nodes_updates_$id")
     private val arCameraPositionStreamHandler: ARCameraPoseStreamHandler = ARCameraPoseStreamHandler()
+    private val arVisibleNodesStreamHandler: ARVisibleNodesStreamHandler = ARVisibleNodesStreamHandler()
 
     // UI variables
     private lateinit var arSceneView: ArSceneView
@@ -317,6 +324,7 @@ internal class AndroidARView(
         anchorManagerChannel.setMethodCallHandler(onAnchorMethodCall)
         sceneManagerChannel.setMethodCallHandler(onSceneMethodCall)
         arCameraPositionChannel.setStreamHandler(arCameraPositionStreamHandler)
+        arVisibleNodesChannel.setStreamHandler(arVisibleNodesStreamHandler)
 
         //Original visualizer: com.google.ar.sceneform.ux.R.raw.sceneform_footprint
 
@@ -668,26 +676,13 @@ internal class AndroidARView(
 
         val cameraPose = arSceneView.arFrame?.camera?.displayOrientedPose
         if(cameraPose != null) {
-            val visibleNodes = calculateVisibleNodes()
-            arCameraPositionStreamHandler.updateCameraPose(cameraPose, visibleNodes)
-        }
-    }
-
-    private fun calculateVisibleNodes(): Array<Node> {
-        var visibleNodes = mutableListOf<Node>()
-
-        val camera = arSceneView.scene.camera
-        val ray = Ray(camera.worldPosition, camera.forward)
-
-        val results = arSceneView.scene.hitTestAll(ray)
-        for( result in results){
-            val node = result.node
-            if (node != null) {
-                visibleNodes.add(node)
+            arCameraPositionStreamHandler.updateCameraPose(cameraPose)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                arVisibleNodesStreamHandler.onFrameUpdate(arSceneView)
             }
         }
-        return visibleNodes.toTypedArray()
     }
+
 
     private fun addNode(dict_node: HashMap<String, Any>, dict_anchor: HashMap<String, Any>? = null): CompletableFuture<Boolean>{
         val completableFutureSuccess: CompletableFuture<Boolean> = CompletableFuture()

@@ -13,6 +13,9 @@ import Flutter
 class ARCameraPoseStreamHandler: NSObject,  FlutterStreamHandler {
     var sink: FlutterEventSink?
     
+    var lastFrame: ARFrame?
+    var lastVisibleNodes: [SCNNode]?
+    
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         sink = events
         return nil
@@ -23,10 +26,10 @@ class ARCameraPoseStreamHandler: NSObject,  FlutterStreamHandler {
         return nil
     }
     
-    func updateCameraPose(frame: ARFrame, visibleNodes: [SCNNode]) {
+    func updateCameraPose(frame: ARFrame) {
         guard let sink = sink else {
             return
         }
-        sink(serializeARCamera(frame.camera, visibleNodes: visibleNodes))
+        sink(serializeARCamera(frame.camera))
     }
 }

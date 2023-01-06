@@ -45,11 +45,17 @@ fun serializePose(pose: Pose): DoubleArray {
     return serializedPoseDouble
 }
 
-fun serializeCameraPoseInfo(pose: Pose, visibleNodes: Array<Node>): Map<String, Any> {
-    val nodes = visibleNodes.map { serializeLocalTransformation(it)  }.toList()
+fun serializeCameraPoseInfo(pose: Pose): Map<String, Any> {
     val map = mapOf(
             "transform" to serializePose(pose),
-            "rotation" to quaternionToAxisAngles(pose.rotationQuaternion),
+            "rotation" to quaternionToAxisAngles(pose.rotationQuaternion)
+    )
+    return map
+}
+
+fun serializeVisibleNodes(visibleNodes: Array<Node>): Map<String, Any> {
+    val nodes = visibleNodes.map { serializeLocalTransformation(it)  }.toList()
+    val map = mapOf(
             "visibleNodes" to nodes
     )
     return map

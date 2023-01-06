@@ -54,10 +54,15 @@ func serializeLocalTransformation(node: SCNNode?) -> Dictionary<String, Any?> {
     return serializedLocalTransformation
 }
 
-func serializeARCamera(_ camera: ARCamera, visibleNodes: [SCNNode] = []) -> Dictionary<String, Any> {
+func serializeARCamera(_ camera: ARCamera) -> Dictionary<String, Any> {
     return [
         "transform": serializeMatrix(camera.transform),
         "rotation": [-camera.eulerAngles.x, -camera.eulerAngles.y, -camera.eulerAngles.z],
+    ]
+}
+
+func serializeVisibleNodes(visibleNodes: [SCNNode] = []) -> Dictionary<String, Any> {
+    return [
         "visibleNodes": visibleNodes.map { e in serializeLocalTransformation(node: e) }
     ]
 }

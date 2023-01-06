@@ -13,7 +13,9 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
     let anchorManagerChannel: FlutterMethodChannel
     let sceneManagerChannel: FlutterMethodChannel
     let arCameraPositionChannel: FlutterEventChannel
-    let arCameraPositionStreamHandler :ARCameraPoseStreamHandler
+    let arVisibleNodesChannel: FlutterEventChannel
+    let arCameraPositionStreamHandler: ARCameraPoseStreamHandler
+    let arVisibleNodesStreamHandler: ARVisibleNodesStreamHandler
     var showPlanes = false
     var customPlaneTexturePath: String? = nil
     private var trackedPlanes = [UUID: (SCNNode, SCNNode)]()
@@ -56,7 +58,9 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         self.anchorManagerChannel = FlutterMethodChannel(name: "aranchors_\(viewId)", binaryMessenger: messenger)
         self.sceneManagerChannel = FlutterMethodChannel(name: "arscene_\(viewId)", binaryMessenger: messenger)
         self.arCameraPositionChannel = FlutterEventChannel(name: "camera_pose_updates_\(viewId)", binaryMessenger: messenger)
+        self.arVisibleNodesChannel = FlutterEventChannel(name: "visible_nodes_updates_\(viewId)", binaryMessenger: messenger)
         self.arCameraPositionStreamHandler = ARCameraPoseStreamHandler()
+        self.arVisibleNodesStreamHandler = ARVisibleNodesStreamHandler()
         super.init()
 
         let configuration = ARWorldTrackingConfiguration() // Create default configuration before initializeARView is called
@@ -70,6 +74,7 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
         self.anchorManagerChannel.setMethodCallHandler(self.onAnchorMethodCalled)
         self.sceneManagerChannel.setMethodCallHandler(self.onSceneMethodCalled)
         self.arCameraPositionChannel.setStreamHandler(arCameraPositionStreamHandler)
+        self.arVisibleNodesChannel.setStreamHandler(arVisibleNodesStreamHandler)
     }
 
     func view() -> UIView {
@@ -389,22 +394,11 @@ class IosARView: NSObject, FlutterPlatformView, ARSCNViewDelegate, UIGestureReco
                 print(error)
             }
         }
-        let visibleNodes = calculateVisibleNodes()
-        arCameraPositionStreamHandler.updateCameraPose(frame: frame, visibleNodes: visibleNodes)
+        arCameraPositionStreamHandler.updateCameraPose(frame: frame)
+        arVisibleNodesStreamHandler.onFrameUpdate(sceneView: sceneView)
     }
     
-    func calculateVisibleNodes() -> [SCNNode] {
-        guard let pointOfView = sceneView.pointOfView else {
-            return []
-        }
-        var visibleNodes: [SCNNode] = []
-        for node in sceneView.scene.rootNode.childNodes {
-            if sceneView.isNode(node, insideFrustumOf: pointOfView) {
-                visibleNodes.append(node)
-            }
-        }
-        return visibleNodes
-    }
+    
 
     func addNode(dict_node: Dictionary<String, Any>, dict_anchor: Dictionary<String, Any>? = nil) -> Future<Bool, Never> {
 

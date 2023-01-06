@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:ar_flutter_plugin/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin/models/ar_camera_pose_info.dart';
+import 'package:ar_flutter_plugin/models/ar_visible_nodes_info.dart';
 import 'package:ar_flutter_plugin/utils/json_converters.dart';
 import 'package:vector_math/vector_math_64.dart';
 import 'package:flutter/services.dart';
@@ -14,11 +15,17 @@ class ARSceneManager {
   /// The event channel used to receive camera pose [Matrix4] updates from the native
   /// platform.
   late EventChannel _cameraPoseChannel;
+  late EventChannel _visibleNodesChannel;
 
   ARCameraPoseInfo? get currentPoseInfo => _currentPoseInfo;
   ARCameraPoseInfo? _currentPoseInfo;
   StreamController<ARCameraPoseInfo>? _poseInfoController;
-  StreamSubscription<ARCameraPoseInfo>? _nativePoseSubscription;
+  StreamSubscription<dynamic>? _nativePoseSubscription;
+
+  ARVisibleNodesInfo? get visibleNodesInfo => _visibleNodesInfo;
+  ARVisibleNodesInfo? _visibleNodesInfo;
+  StreamController<ARVisibleNodesInfo>? _visibleNodesInfoController;
+  StreamSubscription<dynamic>? _nativeVisibleNodesSubscription;
 
   /// Debugging status flag. If true, all platform calls are printed. Defaults to false.
   final bool debug;
@@ -28,6 +35,7 @@ class ARSceneManager {
     _channel.setMethodCallHandler(_platformCallHandler);
 
     _cameraPoseChannel = EventChannel('camera_pose_updates_$id');
+    _visibleNodesChannel = EventChannel('visible_nodes_updates_$id');
 
     if (debug) {
       print("ARSceneManager initialized");
@@ -61,26 +69,13 @@ class ARSceneManager {
   }
 
   Stream<ARCameraPoseInfo> startCameraPoseStream() {
-    var originalStream = _cameraPoseChannel.receiveBroadcastStream();
-
-    var cameraPoseStream = originalStream.asBroadcastStream(
+    final stream =
+        _cameraPoseChannel.receiveBroadcastStream().asBroadcastStream(
       onCancel: (subscription) {
         subscription.cancel();
       },
     );
-
-    final poseStream = cameraPoseStream.map<ARCameraPoseInfo>((e) {
-      return ARCameraPoseInfo.fromJson(e);
-    }).handleError(
-      (error) {
-        if (error is PlatformException) {
-          print('Error caught: ' + error.toString());
-        }
-        throw error;
-      },
-    );
-    _nativePoseSubscription = poseStream.listen(_cameraPoseListener);
-
+    _nativePoseSubscription = stream.listen(_cameraPoseListener);
     _poseInfoController = StreamController.broadcast();
     return _poseInfoController!.stream;
   }
@@ -92,9 +87,47 @@ class ARSceneManager {
     _poseInfoController = null;
   }
 
-  void _cameraPoseListener(ARCameraPoseInfo info) {
-    _currentPoseInfo = info;
-    _poseInfoController?.add(_currentPoseInfo!);
+  void _cameraPoseListener(dynamic e) {
+    try {
+      final info = ARCameraPoseInfo.fromJson(e);
+      _currentPoseInfo = info;
+      _poseInfoController?.add(_currentPoseInfo!);
+    } catch (e) {
+      if (e is PlatformException) {
+        print('Error caught: $e');
+      }
+    }
+  }
+
+  Stream<ARVisibleNodesInfo> startVisibleNodesStream() {
+    final stream =
+        _visibleNodesChannel.receiveBroadcastStream().asBroadcastStream(
+      onCancel: (subscription) {
+        subscription.cancel();
+      },
+    );
+    _nativeVisibleNodesSubscription = stream.listen(_visibleNodesListener);
+    _visibleNodesInfoController = StreamController.broadcast();
+    return _visibleNodesInfoController!.stream;
+  }
+
+  void stopVisibleNodesStream() {
+    _nativeVisibleNodesSubscription?.cancel();
+    _visibleNodesInfoController?.close();
+    _nativeVisibleNodesSubscription = null;
+    _visibleNodesInfoController = null;
+  }
+
+  void _visibleNodesListener(dynamic e) {
+    try {
+      final info = ARVisibleNodesInfo.fromJson(e);
+      _visibleNodesInfo = info;
+      _visibleNodesInfoController?.add(_visibleNodesInfo!);
+    } catch (e) {
+      if (e is PlatformException) {
+        print('Error caught: $e');
+      }
+    }
   }
 
   /// Returns the camera pose in Matrix4 format with respect to the world coordinate system of the [ARView]
