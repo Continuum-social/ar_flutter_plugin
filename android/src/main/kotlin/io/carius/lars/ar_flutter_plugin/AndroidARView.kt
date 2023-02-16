@@ -6,10 +6,8 @@ import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
+import android.opengl.EGL14
+import android.os.*
 import android.util.Log
 import android.view.MotionEvent
 import android.view.PixelCopy
@@ -39,6 +37,9 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.FloatBuffer
 import java.util.concurrent.CompletableFuture
+import android.opengl.EGLDisplay
+import android.opengl.EGLContext
+import android.opengl.EGLSurface
 
 
 internal class AndroidARView(
@@ -72,6 +73,10 @@ internal class AndroidARView(
     private lateinit var animatedGuide: View
     private var pointCloudNode = Node()
     private var worldOriginNode = Node()
+    private var savedContext: EGLContext? = null
+    private var savedDisplay: EGLDisplay? = null
+    private var savedReadSurface: EGLSurface? = null
+    private var savedDrawSurface: EGLSurface? = null
     // Setting defaults
     private var enableRotation = false
     private var enablePans = false
@@ -388,6 +393,7 @@ internal class AndroidARView(
     }
 
     fun onResume() {
+        restoreEglContext()
         // Create session if there is none
         if (arSceneView.session == null) {
             Log.d(TAG, "ARSceneView session is null. Trying to initialize")
@@ -459,10 +465,12 @@ internal class AndroidARView(
             animatedGuideConfig = ARAnimatedGuideConfig(false)
         }
         arSceneView.pause()
+        saveEglContext()
     }
 
     fun onDestroy() {
         try {
+            arSceneView.renderer?.dispose()
             arSceneView.session?.close()
             arSceneView.destroy()
             arSceneView.scene?.removeOnUpdateListener(sceneUpdateListener)
@@ -473,6 +481,7 @@ internal class AndroidARView(
     }
 
     private fun initializeARView(call: MethodCall, result: MethodChannel.Result) {
+        restoreEglContext()
         // Unpack call arguments
         val argShowFeaturePoints: Boolean? = call.argument<Boolean>("showFeaturePoints")
         val argPlaneDetectionConfig: Int? = call.argument<Int>("planeDetectionConfig")
@@ -682,7 +691,6 @@ internal class AndroidARView(
             }
         }
     }
-
 
     private fun addNode(dict_node: HashMap<String, Any>, dict_anchor: HashMap<String, Any>? = null): CompletableFuture<Boolean>{
         val completableFutureSuccess: CompletableFuture<Boolean> = CompletableFuture()
@@ -946,6 +954,41 @@ internal class AndroidARView(
         }
     }
 
+    private fun restoreEglContext() {
+        if (Looper.getMainLooper().thread != Thread.currentThread()) {
+            throw IllegalStateException("restoreEglContext called from non-UI thread")
+        }
+        Log.d(TAG, "Restoring EGL context")
+        if (savedContext != null && savedContext != EGL14.EGL_NO_CONTEXT) {
+            if (!EGL14.eglMakeCurrent(savedDisplay, savedDrawSurface, savedReadSurface, savedContext)) {
+                Log.d(TAG, "Failed to restore")
+            }
+        } else {
+            Log.d(TAG, "Nothing to restore")
+        }
+    }
+
+    private fun saveEglContext() {
+        if (Looper.getMainLooper().thread != Thread.currentThread()) {
+            throw IllegalStateException("saveEglContext called from non-UI thread")
+        }
+        Log.d(TAG,"Saving EGL context")
+        val currentContext = EGL14.eglGetCurrentContext()
+        if (currentContext == null || currentContext == EGL14.EGL_NO_CONTEXT) {
+            Log.d(TAG,"Nothing to save")
+        } else {
+            savedContext = currentContext
+            savedDisplay = EGL14.eglGetCurrentDisplay()
+            savedDrawSurface = EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW)
+            savedReadSurface = EGL14.eglGetCurrentSurface(EGL14.EGL_READ)
+            EGL14.eglMakeCurrent(
+                    savedDisplay,
+                    EGL14.EGL_NO_SURFACE,
+                    EGL14.EGL_NO_SURFACE,
+                    EGL14.EGL_NO_CONTEXT
+            )
+        }
+    }
 }
 
 
