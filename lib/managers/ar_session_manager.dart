@@ -27,6 +27,8 @@ class ARSessionManager {
 
   VoidCallback? _onAnimatedGuideDoneCallback;
 
+  final List<void Function(dynamic)> _errorListeners = [];
+
   ARSessionManager(int id, this.buildContext, this.planeDetectionConfig,
       {this.debug = false}) {
     _channel = MethodChannel('arsession_$id');
@@ -43,7 +45,12 @@ class ARSessionManager {
     try {
       switch (call.method) {
         case 'onError':
-          onError(call.arguments[0]);
+          if (_errorListeners.isEmpty) {
+            onError(call.arguments[0]);
+          }
+          for (var callback in _errorListeners) {
+            callback(call.arguments);
+          }
           print(call.arguments);
           break;
         case 'onPlaneOrPointTap':
@@ -62,6 +69,7 @@ class ARSessionManager {
           break;
         case 'dispose':
           _channel.invokeMethod<void>("dispose");
+          _errorListeners.clear();
           break;
         default:
           if (debug) {
@@ -103,6 +111,14 @@ class ARSessionManager {
       'handlePinch': handlePinch,
       'pinchConfig': pinchConfig?.toMap()
     });
+  }
+
+  void addErrorListener(void Function(dynamic) callback) {
+    _errorListeners.add(callback);
+  }
+
+  void removeErrorListener(void Function(dynamic) callback) {
+    _errorListeners.remove(callback);
   }
 
   /// Displays the [errorMessage] in a snackbar of the parent widget
