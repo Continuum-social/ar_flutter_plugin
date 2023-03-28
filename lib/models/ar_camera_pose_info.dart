@@ -1,8 +1,6 @@
 import 'package:ar_flutter_plugin/utils/json_converters.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-import 'ar_node.dart';
-
 class ARCameraPoseInfo {
   /// The position and orientation of the camera in world coordinate space.
   final Matrix4 transform;

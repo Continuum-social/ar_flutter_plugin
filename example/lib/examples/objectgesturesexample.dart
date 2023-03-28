@@ -11,9 +11,7 @@ import 'package:ar_flutter_plugin/datatypes/node_types.dart';
 import 'package:ar_flutter_plugin/datatypes/hittest_result_types.dart';
 import 'package:ar_flutter_plugin/models/ar_node.dart';
 import 'package:ar_flutter_plugin/models/ar_hittest_result.dart';
-import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
-import 'dart:math';
 
 class ObjectGesturesWidget extends StatefulWidget {
   ObjectGesturesWidget({Key key}) : super(key: key);
@@ -141,6 +139,7 @@ class _ObjectGesturesWidgetState extends State<ObjectGesturesWidget> {
 
   onPanEnded(String nodeName, Matrix4 newTransform) {
     print("Ended panning node " + nodeName);
+    // ignore: unused_local_variable
     final pannedNode =
         this.nodes.firstWhere((element) => element.name == nodeName);
 
@@ -161,6 +160,7 @@ class _ObjectGesturesWidgetState extends State<ObjectGesturesWidget> {
 
   onRotationEnded(String nodeName, Matrix4 newTransform) {
     print("Ended rotating node " + nodeName);
+    // ignore: unused_local_variable
     final rotatedNode =
         this.nodes.firstWhere((element) => element.name == nodeName);
 

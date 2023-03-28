@@ -106,6 +106,7 @@ class ARLocationManager {
   ///
   /// When the location services are not enabled or permissions
   /// are denied the `Future` will return an error.
+  // ignore: unused_element
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:ar_flutter_plugin/managers/ar_location_manager.dart';
 import 'package:ar_flutter_plugin/managers/ar_scene_manager.dart';
 import 'package:ar_flutter_plugin/managers/ar_session_manager.dart';

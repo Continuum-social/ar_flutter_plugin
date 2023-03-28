@@ -11,7 +11,6 @@ import 'package:ar_flutter_plugin/ar_flutter_plugin.dart';
 import 'package:ar_flutter_plugin/datatypes/config_planedetection.dart';
 import 'package:ar_flutter_plugin/datatypes/node_types.dart';
 import 'package:ar_flutter_plugin/models/ar_node.dart';
-import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
 import 'dart:math';
 import 'package:path_provider/path_provider.dart';
@@ -131,6 +130,7 @@ class _LocalAndWebObjectsWidgetState extends State<LocalAndWebObjectsWidget> {
     return file;
   }
 
+  // ignore: unused_element
   Future<void> _downloadAndUnpack(String url, String filename) async {
     var request = await httpClient.getUrl(Uri.parse(url));
     var response = await request.close();

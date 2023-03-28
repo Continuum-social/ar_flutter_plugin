@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:ar_flutter_plugin/models/ar_animated_guide_config.dart';
 import 'package:ar_flutter_plugin/models/ar_hittest_result.dart';
 import 'package:ar_flutter_plugin/models/ar_pinch_config.dart';
@@ -44,23 +43,18 @@ class ARSessionManager {
     try {
       switch (call.method) {
         case 'onError':
-          if (onError != null) {
-            onError(call.arguments[0]);
-            print(call.arguments);
-          }
+          onError(call.arguments[0]);
+          print(call.arguments);
           break;
         case 'onPlaneOrPointTap':
-          if (onPlaneOrPointTap != null) {
-            final rawHitTestResults = call.arguments as List<dynamic>;
-            final serializedHitTestResults = rawHitTestResults
-                .map(
-                    (hitTestResult) => Map<String, dynamic>.from(hitTestResult))
-                .toList();
-            final hitTestResults = serializedHitTestResults.map((e) {
-              return ARHitTestResult.fromJson(e);
-            }).toList();
-            onPlaneOrPointTap(hitTestResults);
-          }
+          final rawHitTestResults = call.arguments as List<dynamic>;
+          final serializedHitTestResults = rawHitTestResults
+              .map((hitTestResult) => Map<String, dynamic>.from(hitTestResult))
+              .toList();
+          final hitTestResults = serializedHitTestResults.map((e) {
+            return ARHitTestResult.fromJson(e);
+          }).toList();
+          onPlaneOrPointTap(hitTestResults);
           break;
         case 'onAnimatedGuideDone':
           _onAnimatedGuideDoneCallback?.call();
@@ -112,7 +106,7 @@ class ARSessionManager {
   }
 
   /// Displays the [errorMessage] in a snackbar of the parent widget
-  onError(String errorMessage) {
+  void onError(String errorMessage) {
     ScaffoldMessenger.of(buildContext).showSnackBar(SnackBar(
         content: Text(errorMessage),
         action: SnackBarAction(
