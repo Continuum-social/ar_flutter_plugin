@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'ar_flutter_plugin'
-  s.version          = '0.6.13'
+  s.version          = '0.6.15'
   s.summary          = 'A Flutter plugin for shared AR experiences.'
   s.description      = <<-DESC
 A Flutter plugin for shared AR experiences supporting Android and iOS.
@@ -18,8 +18,8 @@ A Flutter plugin for shared AR experiences supporting Android and iOS.
   s.dependency 'GLTFSceneKit'
   s.dependency 'SwiftJWT'
   s.static_framework = true
-  s.dependency 'ARCore', '~> 1.35.0'
-  s.dependency 'ARCore/CloudAnchors', '~> 1.35.0'
+  # s.dependency 'ARCore', '~> 1.35.0'
+  s.dependency 'ARCore/CloudAnchors', '~> 1.36.0'
   s.platform = :ios, '13.0'
 
 
