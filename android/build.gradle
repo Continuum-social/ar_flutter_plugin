@@ -34,7 +34,7 @@ android {
         minSdkVersion 24
     }
 
-    namespace "io.carius.lars.ar_flutter_plugin_flutterflow"
+    namespace "io.carius.lars.ar_flutter_plugin"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
